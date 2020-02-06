@@ -12,3 +12,10 @@ func RunKubectl(args ...string) string {
 	}
 	return string(out)
 }
+
+func RunKubectlInBackground(args ...string) {
+	err := exec.Command("kubectl", args...).Start()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
