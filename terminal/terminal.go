@@ -3,6 +3,8 @@ package terminal
 import (
 	"bufio"
 	"fmt"
+	"golang.org/x/sys/unix"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -33,25 +35,40 @@ func Clear() {
 	c.Run()
 }
 
+func GetWindowSize() (int, int) {
+	ws, err := unix.IoctlGetWinsize(int(os.Stdout.Fd()), unix.TIOCGWINSZ)
+	if err != nil {
+		log.Fatalf("get window size failed: %v", err)
+	}
+
+	return int(ws.Row), int(ws.Col)
+}
+
 func Print(format string, a ...interface{}) {
 	fmt.Printf(format, a...)
 }
 
-func getColor(code int) string {
+func getForegroundColor(code int) string {
 	return fmt.Sprintf("\033[3%dm", code)
 }
-func colorize(str string, color int) string {
-	return fmt.Sprintf("%s%s%s", getColor(color), str, reset)
+
+func getBackgroundColor(code int) string {
+	return fmt.Sprintf("\033[4%dm", code)
 }
+
+func colorize(str string, foregroundColor int, backgroundColor int) string {
+	return fmt.Sprintf("%s%s%s%s", getBackgroundColor(backgroundColor), getForegroundColor(foregroundColor), str, reset)
+}
+
 func bolder(str string) string {
 	return fmt.Sprintf("\033[1m%s\033[0m", str)
 }
 
-func PrintEx(bold bool, color int, format string, a ...interface{}) {
+func PrintEx(bold bool, foregroundColor int, backgroundColor int, format string, a ...interface{}) {
 	text := fmt.Sprintf(format, a...)
 	if bold {
 		text = bolder(text)
 	}
 
-	Print(colorize(text, color))
+	Print(colorize(text, foregroundColor, backgroundColor))
 }

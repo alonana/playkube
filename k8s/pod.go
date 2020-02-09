@@ -5,6 +5,7 @@ import (
 	"github.com/alonana/playkube/terminal"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 type Pod struct {
@@ -27,32 +28,54 @@ func PodParse(kubectlLine string) *Pod {
 	}
 }
 
-func (pod *Pod) Print(nameWidth int) {
-	format := fmt.Sprintf("%%-%vv", nameWidth+9)
-	terminal.PrintEx(true, terminal.BLACK, format, pod.Name)
+func (p *Pod) Print(nameWidth int) {
+	terminal.PrintEx(true, terminal.WHITE, terminal.BLACK, "%v", p.Name)
+	terminal.Print("%v", strings.Repeat(" ", nameWidth-len(p.Name)+1))
 
-	pod.printContainers()
-	pod.printStatus()
-	terminal.Print("\n")
+	p.printContainers()
+	p.printStatus()
 }
 
-func (pod *Pod) printContainers() {
+func (p *Pod) GetLogs(rows int, cols int) []string {
+	logs := RunKubectl("logs", "--tail", strconv.Itoa(rows*2), p.Name)
+
+	lines := strings.Split(logs, "\n")
+	var colAdjustedLines []string
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		for start := 0; start < len(line); start += cols {
+			end := start + cols
+			if end > len(line) {
+				end = len(line)
+			}
+			breakLine := line[start:end]
+			colAdjustedLines = append(colAdjustedLines, breakLine)
+		}
+	}
+	if len(colAdjustedLines) > rows {
+		return colAdjustedLines[len(colAdjustedLines)-rows:]
+	}
+	return colAdjustedLines
+}
+
+func (p *Pod) printContainers() {
 	var color = terminal.GREEN
-	if pod.ContainersRunning != pod.ContainersTotal {
+	if p.ContainersRunning != p.ContainersTotal {
 		color = terminal.YELLOW
 	}
-	containers := fmt.Sprintf("%v/%v", pod.ContainersRunning, pod.ContainersTotal)
-	terminal.PrintEx(false, color, "%v", containers)
+	containers := fmt.Sprintf("%v/%v", p.ContainersRunning, p.ContainersTotal)
+	terminal.PrintEx(false, color, terminal.BLACK, "%v", containers)
 }
 
-func (pod *Pod) printStatus() {
-	var color = terminal.GREEN
-	if pod.Status != "Running" {
-		color = terminal.YELLOW
+func (p *Pod) printStatus() {
+	var foregroundColor = terminal.GREEN
+	if p.Status != "Running" {
+		foregroundColor = terminal.YELLOW
 	}
-	terminal.PrintEx(false, color, " %v", pod.Status)
+	terminal.Print(" ")
+	terminal.PrintEx(false, foregroundColor, terminal.BLACK, "%-9v", p.Status)
 }
 
-func (pod *Pod) Delete() {
-	RunKubectlInBackground("delete", "pod", pod.Name)
+func (p *Pod) Delete() {
+	RunKubectlInBackground("delete", "pod", p.Name)
 }
