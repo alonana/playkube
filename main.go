@@ -10,8 +10,7 @@ func main() {
 	go func() {
 	}()
 	for {
-		pods.PodsList()
-		pods.PodsPrint()
+		pods.Refresh()
 		command := terminal.ReadLine()
 		pods.Execute(command)
 	}

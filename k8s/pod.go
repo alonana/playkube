@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Pod struct {
@@ -37,7 +38,10 @@ func (p *Pod) Print(nameWidth int) {
 }
 
 func (p *Pod) GetLogs(rows int, cols int) []string {
-	logs := RunKubectl("logs", "--tail", strconv.Itoa(rows*2), p.Name)
+	logs, err := RunKubectl("logs", "--tail", strconv.Itoa(rows*2), p.Name)
+	if err != nil {
+		return []string{err.Error()}
+	}
 
 	lines := strings.Split(logs, "\n")
 	var colAdjustedLines []string
@@ -73,9 +77,26 @@ func (p *Pod) printStatus() {
 		foregroundColor = terminal.YELLOW
 	}
 	terminal.Print(" ")
-	terminal.PrintEx(false, foregroundColor, terminal.BLACK, "%-9v", p.Status)
+	terminal.PrintEx(false, foregroundColor, terminal.BLACK, "%v", p.Status)
+	terminal.Print("%v", strings.Repeat(" ", 17-len(p.Status)+1))
 }
 
 func (p *Pod) Delete() {
 	RunKubectlInBackground("delete", "pod", p.Name)
+}
+
+func (p *Pod) Build() {
+	image, err := RunKubectl("get", "pod", p.Name, "-o", "jsonpath=\"{.spec.containers[0].image}\"")
+	if err != nil {
+		terminal.PrintEx(true, terminal.RED, terminal.BLACK, "%v", err)
+		time.Sleep(10 * time.Second)
+	} else {
+		script := RunDocker("inspect", "--format", "'{{ index .Config.Labels \"BUILD_SCRIPT\"}}'", image)
+		terminal.Clear()
+		terminal.Print("Running build for ")
+		terminal.PrintEx(true, terminal.WHITE, terminal.BLACK, "%v", script)
+		RunBuild(script)
+		time.Sleep(3 * time.Second)
+		p.Delete()
+	}
 }
