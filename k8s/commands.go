@@ -71,6 +71,7 @@ func RunCommandStreaming(build string) string {
 	}
 	return allStdout
 }
+
 func RunBuild(build string) {
 	cmd := exec.Command("sh", "-c", build)
 
