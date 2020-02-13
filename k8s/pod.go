@@ -46,7 +46,10 @@ func (p *Pod) GetLogs(rows int, cols int) []string {
 	lines := strings.Split(logs, "\n")
 	var colAdjustedLines []string
 	for i := 0; i < len(lines); i++ {
-		line := lines[i]
+		line := strings.TrimSpace(lines[i])
+		if len(line) == 0 {
+			continue
+		}
 		for start := 0; start < len(line); start += cols {
 			end := start + cols
 			if end > len(line) {
